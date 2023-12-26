@@ -1,163 +1,121 @@
-# puppetlabs-pe_status_check
+# Puppet Status Check
 
-- [puppetlabs-pe_status_check](#puppetlabs-pe_status_check)
-  - [Description](#description)
-  - [Setup](#setup)
-    - [What pe_status_check affects](#what-pe_status_check-affects)
-    - [Setup requirements](#setup-requirements)
-    - [Beginning with pe_status_check](#beginning-with-pe_status_check)
-  - [Usage](#usage)
-    - [Enabling agent_status_check](#enabling-agent_status_check)
-    - [Disabling agent_status_check](#disabling-agent_status_check)
-  - [Reporting Options](#reporting-options)
-    - [Class declaration pe_status_check (optional)](#class-declaration-pe_status_check-optional)
-    - [Ad-hoc Report (Plans)](#ad-hoc-report-plans)
-    - [Using a Puppet Query to report status.](#using-a-puppet-query-to-report-status)
-      - [Setup Requirements](#setup-requirements-1)
-      - [Running the plans](#running-the-plans)
-  - [Reference](#reference)
-    - [Fact: pe_status_check_role](#fact-pe_status_check_role)
-    - [Fact: pe_status_check](#fact-pe_status_check)
-    - [Fact: agent_status_check](#fact-agent_status_check)
-  - [How to report an issue or contribute to the module](#how-to-report-an-issue-or-contribute-to-the-module)
-- [Supporting Content](#supporting-content)
-    - [Articles](#articles)
-    - [Videos](#videos)
+- [Description](#description)
+- [Setup](#setup)
+  - [What this module affects](#what-this-module-affects)
+  - [Setup requirements](#setup-requirements)
+- [Usage](#usage)
+  - [Enable infrastructure checks](#enable-infrastructure-checks)
+  - [Disable](#disable)
+- [Reporting Options](#reporting-options)
+  - [Class declaration](#class-declaration)
+  - [Using a Puppetdb Query to report status.](#using-a-puppetdb-query-to-report-status)
+  - [Ad-hoc Report (Plans)](#ad-hoc-report-plans)
+    - [Setup Requirements](#setup-requirements-1)
+    - [Running the plans](#running-the-plans)
+- [Reference](#reference)
+  - [Fact: puppet_status_check_role](#fact-puppet_status_check_role)
+  - [Fact: puppet_status_check](#fact-puppet_status_check)
+  - [Fact: agent_status_check](#fact-agent_status_check)
+- [How to report an issue or contribute to the module](#how-to-report-an-issue-or-contribute-to-the-module)
 
 ## Description
 
-puppetlabs-pe_status_check provides a way to alert the end-user when Puppet Enterprise is not in an ideal state. It uses pre-set indicators and has a simplified output that directs the end-user to the next steps for resolution.
-
-Users of the tool have a greater ability to provide their own self-service resolutions and shorter incident resolution times with Puppet Support due to higher quality information available to our team.
+Puppet Status Check provides a way to alert the end-user when Puppet is not in an ideal state. It uses pre-set indicators and has a simplified output that directs the end-user to the next steps for resolution.
 
 ## Setup
 
-### What pe_status_check affects
+### What this module affects
 
-This module installs two structured facts named `pe_status_check` and `agent_status_check`. Each fact contains an array of key pairs that output an indicator ID and a Boolean value. The `pe_status_check` fact is confined to only Puppet Enterprise infrastructure agents, and the `agent_status_check` fact is confined to non-infrastructure agent nodes.
+This module primarily provides status indicators the fact named `puppet_status_check`. Once nodes have been classified with the module, facts will be generated and the optional indicators can occur. By default, fact collection is set to only check the status of the Puppet agent. Puppet infrastructure checks require additional configuration.
 
 ### Setup requirements
 
 Install the module, plug-in sync will be used to deliver the required facts for this module, to each agent node in the environment the module is installed in.
 
-### Beginning with pe_status_check
-
-This module primarily provides indicators using facts, so installing the module and allowing plug-in sync to occur lets the module start functioning.
-Collection of the `agent_status_check` fact is disabled by default so as not to affect all puppet agents indiscriminately
-
 ## Usage
 
-The facts in this module can be directly consumed by monitoring tools such as Splunk, any element in the structured facts `pe_status_check` or `agent_status_check` reporting as `false` indicates a fault state in Puppet Enterprise. When any element reports as `false`, look up the incident ID in the reference section for next steps.
+Classify nodes with `puppet_status_check`. Notify resources will be added to a node on each Puppet run if indicator's are reporting as `false`. These can be viewed in the Puppet report for each node, or queried from Puppetdb.
 
-Alternatively, assigning the `class pe_status_check` to the infrastructure notifies on each Puppet run if any indicator is reporting as `false`, this can be viewed in the Puppet report for each node.
+### Enable infrastructure checks
 
-### Enabling agent_status_check
+The default fact population will not perform checks related to puppet infrastructure services such as the puppetserver, puppetdb, or postgresql. To enable the checks for Puppet servers, set the following parameter to those infrastructure node(s):
 
-By default your normal agent population will not collect the `agent_status_check` fact, this can be enabled for all agents or a subset of agents, by classifying pe_status_check::agent_status_enable to your nodes.
+```
+puppet_status_check::role: primary
+```
 
-### Disabling agent_status_check
+### Disable
 
-Following the addition of the class `pe_status_check::agent_status_enable` to an agent node, disable the collection of agent_status_check fact, set the following parameter:
+To completely disable the collection of `puppet_status_check` facts, uninstall the module or [classify the module](#class-declaration) with the `enabled` parameter:
 
-`pe_status_check::agent_status_enable::agent_status_enabled = false`
+```
+puppet_status_check::enabled: false
+```
 
 ## Reporting Options
 
-### Class declaration pe_status_check (optional)
+### Class declaration
 
-To activate the notification functions of this module, classify your Puppet Infrastructure with the `pe_status_check` class using [your preferred classification method](https://puppet.com/docs/pe/latest/grouping_and_classifying_nodes.html#enable_console_configuration_data). Below is an example using `site.pp`.
+To enable fact collection and configure notifications, classify nodes with the `puppet_status_check` class. Examples using `site.pp`:
+
+Check basic agent status:
 
 ```puppet
 node 'node.example.com' {
-  include pe_status_check
+  include 'puppet_status_check'
+}
+```
+
+Check puppet server infrastructure status:
+
+```puppet
+node 'node.example.com' {
+  class { 'puppet_status_check':
+    role => 'primary',
+  }
 }
 ```
 
 For maximum coverage, report on all default indicators. However, if you need to make exceptions for your environment, classify the array parameter `indicator_exclusions` with a list of all the indicators you do not want to report on.
 
-This workflow is not available for the `agent_status_check` fact.
-
 ```puppet
-class { 'pe_status_check':
-  indicator_exclusions             => ['S0001','S0003','S0003','S0004'],
+class { 'puppet_status_check':
+  indicator_exclusions => ['S0001','S0003','S0003','S0004'],
 }
 ```
+
+### Using a Puppetdb Query to report status.
+
+As the module uses Puppet's existing fact behavior to gather the status data from each of the agents, it is possible to use PQL (puppet query language) to gather this information.
+
+Consult with your local Puppet administrator to construct a query suited to your organizational needs. 
+Please find some examples of using the [puppetdb_cli gem](#https://github.com/puppetlabs/puppetdb-cli) to query the status check facts below:
+
+1. To find the complete output from all nodes listed by certname (this could be a large query based on the number of agent nodes, further filtering is advised ):
+   ```shell
+   puppet query 'facts[certname,value] { name = "puppet_status_check" }'
+   ```
+        
+2. To find the complete output from all nodes listed by certname with the `primary` role:
+   ```shell
+   puppet query 'facts[certname,value] { name = "puppet_status_check" and certname in facts[certname] { name = "puppet_status_check_role" and value = "primary" } }'
+   ```
+
+3. To find those nodes with a specific status check set to false:
+   ```shell
+   puppet query 'inventory[certname] { facts.puppet_status_check.S0001 = false }'
+   ```
 
 ### Ad-hoc Report (Plans)
 
-The plans, `pe_status_check::infra_summary` and `pe_status_check::agent_summary` summarize the status of each of the checks on target nodes that have the `pe_status_check` or `agent_status_check` fact respectively, sample output can be seen below:
+The plan `puppet_status_check::summary` summarizes the status of each of the checks on target nodes that have the `puppet_status_check` fact enabled. Sample output can be seen below:
 
-```json
-{
-    "nodes": {
-        "details": {
-            "pe-psql-70aefa-0.region-a.domain.com": {
-                "failed_tests_count": 0,
-                "passing_tests_count": 13,
-                "failed_tests_details": []
-            },
-            "pe-server-70aefa-0.region-a.domain.com": {
-                "failed_tests_count": 1,
-                "passing_tests_count": 30,
-                "failed_tests_details": [
-                    "S0022 Determines if there is a valid Puppet Enterprise license in place at /etc/puppetlabs/license.key on your primary which is not going to expire in the next 90 days"
-                ]
-            },
-            "pe-compiler-70aefa-0.region-a.domain.com": {
-                "failed_tests_count": 0,
-                "passing_tests_count": 23,
-                "failed_tests_details": []
-            },
-            "pe-compiler-70aefa-1.region-b.domain.com": {
-                "failed_tests_count": 0,
-                "passing_tests_count": 23,
-                "failed_tests_details": []
-            }
-        },
-        "failing": [
-            "pe-server-70aefa-0.region-a.domain.com"
-        ],
-        "passing": [
-            "pe-compiler-70aefa-1.region-b.domain.com",
-            "pe-compiler-70aefa-0.region-a.domain.com",
-            "pe-psql-70aefa-0.region-a.domain.com"
-        ]
-    },
-    "errors": {},
-    "status": "failing",
-    "failing_node_count": 1,
-    "passing_node_count": 3
-}
-```
-
-### Using a Puppet Query to report status.
-
-As the pe_status_check module uses Puppet's existing fact behavior to gather the status data from each of the agents, it is possible to use PQL (puppet query language) to gather this information.
-
-Consult with your local Puppet administrator to construct a query suited to your organizational needs. 
-Please find some examples of using pe_client_tools to query the status check facts below:
-
-1. To find the complete output of pe_status_check from all nodes listed by certname:
-
-      ```shell
-      puppet query 'facts[certname,value] { name = "pe_status_check" }'
-      ```
-        
-2. To find the complete output of agen_status_check from all nodes listed by certname (this could be a large query based on the number of agent nodes, further filtering is advised ):
-
-      ```shell
-      puppet query 'facts[certname,value] { name = "agent_status_check" }'
-      ```
-
-3. To find those nodes with a  specific status check set to false:
-
-      ```shell
-      puppet query 'inventory[certname] { facts.pe_status_check.S0001 = false }'
-      ```
+**TBC**
 
 #### Setup Requirements
 
-`pe_status_check::infra_summary` and `pe_status_check::agent_summary` utilize [hiera](https://puppet.com/docs/puppet/latest/hiera_intro.html) to lookup test definitions, this requires placing a static hierarchy in your **environment level** [hiera.yaml](https://puppet.com/docs/puppet/latest/hiera_config_yaml_5.html).
+`puppet_status_check::summary` utilize [hiera](https://puppet.com/docs/puppet/latest/hiera_intro.html) to lookup test definitions, this requires placing a static hierarchy in your **environment level** [hiera.yaml](https://puppet.com/docs/puppet/latest/hiera_config_yaml_5.html).
 
 ```yaml
 plan_hierarchy:
@@ -166,74 +124,68 @@ plan_hierarchy:
     data_hash: yaml_data
 ```
 
-
 See the following [documentation](https://puppet.com/docs/bolt/latest/hiera.html#outside-apply-blocks) for further explanation.
 
 #### Using Static Hiera data to populate indicator_exclusions when executing plans
 
-Place the plan_hierarchy listed in the step above, in the environment layer (https://www.puppet.com/docs/pe/latest/writing_plans_in_puppet_language_pe.html#using_hiera_with_plans)
+Place the plan_hierarchy listed in the step above, in the environment layer.
 
-Create a [static.yaml] file in the environment layer hiera data directory```
+Create a [static.yaml] file in the environment layer hiera data directory
 ```yaml
-pe_status_check::indicator_exclusions:                                             
+puppet_status_check::indicator_exclusions:                                             
   - '<TEST ID>'                                                                
 ``` 
 
-Indicator ID's within array will be excluded when `running pe_status_check::infra_summary` and `pe_status_check::agent_summary` p
+Indicator ID's within array will be excluded when `running puppet_status_check::summary`.
 
 #### Running the plans
 
-The `pe_status_check::infra_summary` and `pe_status_check::agent_summary` plans can be run from the [PE console](https://puppet.com/docs/pe/latest/running_plans_from_the_console_.html) or from [the command line](https://puppet.com/docs/pe/latest/running_plans_from_the_command_line.html). Below are some examples of running the plans from the command line. More information on the parameters in the plan can be seen in the [REFERENCE.md](REFERENCE.md).
+The `puppet_status_check::summary` plans can be run from the [Puppet Bolt](https://puppet.com/bolt). More information on the parameters in the plan can be seen in the [REFERENCE.md](REFERENCE.md).
 
-Example call from the command line to run `pe_status_check::infra_summary` against all infrastructure nodes:
+Example call from the command line to run `puppet_status_check::summary` against all infrastructure nodes:
 
 ```shell
-puppet plan run pe_status_check::infra_summary
+bolt plan run puppet_status_check::summary role=primary
 ```
-Example call from the command line to run `pe_status_check::agent_summary` against all regular agent nodes:
+Example call from the command line to run `puppet_status_check::summary` against all regular agent nodes:
 
 ```shell
-puppet plan run pe_status_check::agent_summary
+bolt plan run puppet_status_check:summary role=agent
 ```
 
 Example call from the command line to run against a set of infrastructure nodes:
 
 ```shell
-puppet plan run pe_status_check::infra_summary targets=pe-server-70aefa-0.region-a.domain.com,pe-psql-70aefa-0.region-a.domain.com
+bolt plan run puppet_status_check::summary targets=server-70aefa-0.region-a.domain.com,psql-70aefa-0.region-a.domain.com
 ```
 
-Example call from the command line to exclude indicators for `pe_status_check::infra_summary`:
+Example call from the command line to exclude indicators for `puppet_status_check::infra_summary`:
 
 ```shell
-puppet plan run pe_status_check::infra_summary -p '{"indicator_exclusions": ["S0001","S0021"]}'
+bolt plan run puppet_status_check::summary -p '{"indicator_exclusions": ["S0001","S0021"]}'
 ```
-Example call from the command line to exclude indicators for `pe_status_check::agent_summary`:
+Example call from the command line to exclude indicators for `puppet_status_check::agent_summary`:
 
 ```shell
-puppet plan run pe_status_check::agent_summary -p '{"indicator_exclusions": ["AS001","AS002"]}'
+bolt plan run puppet_status_check::summary -p '{"indicator_exclusions": ["AS001","AS002"]}'
 ```
 
 ## Reference
 
-### Fact: pe_status_check_role
+### Fact: puppet_status_check_role
 
-This fact is used to determine which individual status checks should be run on each individual infrastructure node. The fact queries which Puppet Enterprise Roles have been classified to each node and uses this to make the determination.
+This fact is used to determine which status checks are included on an infrastructure node. Classify the `puppet_status_check` module with a `role` parameter to change the role.
 
+| Role     | Description |
+| -------- | - |
+| primary  | The node hosts a puppetserver, puppetdb, database, and certificate authority |
+| compiler | The node hosts a puppetserver and puppetdb |
+| postgres | The node hosts a database |
+| agent    | The node runs a puppet agent service |
 
-| Role | Description |
-|---|---|
-| primary | The node is both a certificate authority and a postgres host |
-| replica | The node has the primary_master_replica role |
-| pe_compiler | The node has both the master and puppetdb roles |
-| postgres | The node has just the database role |
-| legacy_compiler | The node has the master role but not the puppetdb role |
-| legacy_primary | The node is a certificate authority but not a postgres host |
-| unknown | The node type could not be determined |
+_The role is `agent` by default. _
 
-A failure to determine node type will result in a safe subset of checks being run that will work on all infrastructure node types.
-
-
-### Fact: pe_status_check
+### Fact: puppet_status_check
 
 This fact is confined to run on infrastructure nodes only.
 
@@ -284,14 +236,6 @@ Refer  below for next steps when any indicator reports a `false`.
 | S0044        | Determines if Puppet Servers are using the the PE classifier for the node data plugin (node terminus)                    | Due to performance optimizations, it is recommended to use the PE classifier plugin instead of external node classifier (ENC) scripts or applications. See the [node_terminus configuration setting documentation](https://www.puppet.com/docs/puppet/7/configuration.html#node-terminus) for more information.                 | If you have additional questions about the node_terminus configuration setting, open a support ticket and reference S0044.            |
 | S0045        | Determines if Puppet Servers are configured with an excessive number of JRubies. | Because each JRuby instance consumes additional memory, having too many can reduce the amount of heap space available to Puppet server and cause excessive garbage collections.  While it is possible to increase the heap along with the number of JRubies, we have observered diminishing returns with more than 12 JRubies and therefore recommend an upper limit of 12. We also recommend allocating between 1 - 2gb of heap memory for each JRuby. |  If you would like to measure the effects of changing JRubies and heap settings, use the [Puppet Operational Dashboards module](https://forge.puppet.com/modules/puppetlabs/puppet_operational_dashboards/readme) to configure a metrics stack and Grafana dashboards for viewing the metrics.  If you still have performance issues or further questions, open a support ticket and reference S0045. |
 
-### Fact: agent_status_check
-
-This fact is confined to run on only agent nodes that are NOT infrastructure nodes.
-
-Refer below for next steps when any indicator reports a `false`.
-
-| Indicator ID | Description                                                                        | Self-service steps                                                                                                                                                                                                                                                                                                                                                                                                                                                          | What to include in a Support ticket                                                                                                                                                                                                   |
-|--------------|------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | AS001        | Determines if the agent host certificate is expiring in the next 90 days.                                     | Puppet Enterprise has a plan built into extend agent certificates. Use a puppet query to find expiring host certificates and pass the node ID to this plan:   `puppet plan run enterprise_tasks::agent_cert_regen agent=$(puppet query 'inventory[certname] { facts.agent_status_check.AS001 = false }' \| jq  -r '.[].certname' \|  paste -sd, -) master=$(puppet config print certname)`  |  If the plan fails to run, open a support ticket referencing AS001 and provide the error message received when running the plan.                                                                               | 
 | AS002        | Determines if the pxp-agent has an established connection to a pxp broker                                     | Ensure the pxp-agent service is running, if running check `/var/log/puppetlabs/pxp-agent/pxp-agent.log` (on *nix) or `C:/ProgramData/PuppetLabs/pxp-agent/var/log/pxp-agent.log` (on Windows) — Contains the for connection issues, first ensuring the agent is connecting to the proper endpoint, for example, a compiler and not the primary. This fact can also be used as a target filter for running tasks, ensuring time is not wasted sending instructions to agents not connected to a broker| If unable to make a connection to a broker, raise a ticket with the support team quoting AS002 and attaching the file  `/var/log/puppetlabs/pxp-agent/pxp-agent.log` (on *nix) or `C:/ProgramData/PuppetLabs/pxp-agent/var/log/pxp-agent.log` (on Windows) along with the conclusions of your investigation so far                                                                            | 
 | AS003        | Determines the certname configuration parameter is incorrectly set outside of the [main] section of the puppet.conf file.                                 | The Puppet documentation states clearly certname should always be placed solely in the [main] section to prevent unforseen issues with the operation of the puppet agent https://puppet.com/docs/puppet/7/configuration.html#certname | If unable to determine why the indicator is being raised. Open a ticket with the support team quoting AS003 and attaching the file  `puppet.conf`  along with the conclusions of your investigation so far .                                                                           | 
@@ -299,32 +243,4 @@ Refer below for next steps when any indicator reports a `false`.
 
 ## How to report an issue or contribute to the module
 
-If you are a PE user and need support using this module or encounter issues, our Support team is happy to help you. Open a ticket at the [Support Portal](https://support.puppet.com/hc/en-us/requests/new).
- If you have a reproducible bug or are a community user, you can [open an issue directly in the GitHub issues page of the module](https://github.com/puppetlabs/puppetlabs-pe_status_check/issues). We also welcome PR contributions to improve the module. [Please see further details about contributing](https://puppet.com/docs/puppet/latest/contributing.html#contributing_changes_to_module_repositories).
-
-
----
-
-# Supporting Content
-
-### Articles
-
-The [Support Knowledge base](https://support.puppet.com/hc/en-us) is a searchable repository for technical information and how-to guides for all Puppet products.
-
-This Module has the following specific Article(s) available:
-
-1. [Find and fix common issues in Puppet Enterprise using the puppetlabs-pe_status_check module](https://support.puppet.com/hc/en-us/articles/4533321605271)
-
-### Videos
-
-The [Support Video Playlist](https://youtube.com/playlist?list=PLV86BgbREluWKzzvVulR74HZzMl6SCh3S) is a resource of content generated by the support team
-
-This Module has the following specific video content available:
-
-1. [Preventative Maintenance With PE Status Check](https://www.youtube.com/watch?v=xGYldJBtpaA)
-
-
-   
-   ---
-
-
+ If you have a reproducible bug, you can [open an issue directly in the GitHub issues page of the module](https://github.com/h0tw1r3/h0tw1r3-puppet_status_check/issues). We also welcome PR contributions to improve the module. [Please see further details about contributing](https://puppet.com/docs/puppet/latest/contributing.html#contributing_changes_to_module_repositories).

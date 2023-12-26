@@ -1,47 +1,36 @@
 {
-  "name": "puppetlabs-pe_status_check",
-  "version": "4.1.0",
-  "author": "Marty Ewings",
-  "summary": "A Puppet Enterprise Module to Promote Preventative Maintenance and Self Service",
+  "name": "puppetlabs-puppet_status_check",
+  "version": "0.1.0",
+  "author": "Jeffrey Clark",
+  "summary": "A Puppet Module to Promote Preventative Maintenance and Self Service",
   "license": "Apache-2.0",
-  "source": "https://github.com/puppetlabs/puppetlabs-pe_status_check",
-  "project_page": "https://github.com/puppetlabs/puppetlabs-pe_status_check",
-  "issues_url": "https://github.com/puppetlabs/puppetlabs-pe_status_check/issues",
+  "source": "https://github.com/puppetlabs/puppetlabs-puppet_status_check",
+  "project_page": "https://github.com/puppetlabs/puppetlabs-puppet_status_check",
+  "issues_url": "https://github.com/puppetlabs/puppetlabs-puppet_status_check/issues",
   "dependencies": [
 
   ],
   "operatingsystem_support": [
     {
-      "operatingsystem": "RedHat",
-      "operatingsystemrelease": [
-        "7",
-        "8"
-      ]
-    },
-    {
       "operatingsystem": "CentOS",
       "operatingsystemrelease": [
         "7",
-        "8"
+        "8",
+        "9"
       ]
     },
     {
-      "operatingsystem": "OracleLinux",
+      "operatingsystem": "Debian",
       "operatingsystemrelease": [
-        "7"
-      ]
-    },
-    {
-      "operatingsystem": "Scientific",
-      "operatingsystemrelease": [
-        "7"
+        "10",
+        "11"
       ]
     },
     {
       "operatingsystem": "Ubuntu",
       "operatingsystemrelease": [
-        "18.04",
-        "20.04"
+        "20.04",
+        "22.04"
       ]
     },
     {
@@ -65,13 +54,15 @@
     {
       "operatingsystem": "Rocky",
       "operatingsystemrelease": [
-        "8"
+        "8",
+        "9"
       ]
     },
     {
       "operatingsystem": "AlmaLinux",
       "operatingsystemrelease": [
-        "8"
+        "8",
+        "9"
       ]
     }
   ],
